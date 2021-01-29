@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { useFormik } from "formik";
 import VisuallyHidden from "@reach/visually-hidden";
+import loadingIcon from "../images/loading.gif";
 
 function validator(values) {
   const errors = {};
@@ -10,6 +11,12 @@ function validator(values) {
   }
   if (!values.url) {
     errors.url = "*Website URL is required";
+  } else if (
+    !/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)?/gi.test(
+      values.url
+    )
+  ) {
+    errors.url = "Please enter a valid URL. Example: https://example.com";
   }
   return errors;
 }
@@ -17,6 +24,7 @@ function validator(values) {
 export default function AddWebsite({ close, websites, setWebsites }) {
   let history = useHistory();
   let location = useLocation();
+  const [loading, setLoading] = useState(false);
 
   const { handleSubmit, handleChange, values, errors } = useFormik({
     initialValues: {
@@ -31,6 +39,7 @@ export default function AddWebsite({ close, websites, setWebsites }) {
     },
   });
   function handleClick() {
+    setLoading(true);
     fetch(process.env.REACT_APP_API_URL + "/api/v1/websites", {
       method: "POST",
       headers: {
@@ -39,14 +48,22 @@ export default function AddWebsite({ close, websites, setWebsites }) {
       body: JSON.stringify({ website: values }),
     })
       .then((res) => res.json())
-      .then(({ website }) => {
-        console.log(website);
-        if (location.pathname === "/") {
-          return history.push("/dashboard");
+      .then((res) => {
+        if (!res.error) {
+          const { website } = res;
+          if (location.pathname === "/") {
+            return history.push("/dashboard");
+          } else {
+            setWebsites([...websites, website]);
+            return close();
+          }
         } else {
-          setWebsites([...websites, website]);
-          return close();
+          setLoading(false);
+          alert(res.msg);
         }
+      })
+      .catch((error) => {
+        alert("Something went wrong");
       });
   }
 
@@ -105,6 +122,18 @@ export default function AddWebsite({ close, websites, setWebsites }) {
               </button>
             </span>
           </div>
+          {loading ? (
+            <div className="mcenter pt-4">
+              <img
+                src={loadingIcon}
+                alt="loading"
+                className="h-10 w-10 mcenter"
+              />
+              <p className="flex justify-center mt-1">Please Wait...</p>
+            </div>
+          ) : (
+            ""
+          )}
         </form>
       </div>
     </div>
